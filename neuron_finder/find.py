@@ -36,7 +36,7 @@ FEATURES = (("max+", "max", 1.0), ("mean+", "mean", 1.0), ("summ+", "summ", 1.0)
 @dataclass
 class FindConfig:
     n_singles: int = 16
-    composite_ks: tuple = (4, 8, 16)
+    composite_ks: tuple = (4, 8, 16, 32)
     n_controls: int = 6
     doses: tuple = (0.4, 0.8, 1.5)
     n_prompts: int = 5
@@ -46,6 +46,7 @@ class FindConfig:
     min_coherence: float = 6.0
     min_lift: float = 1.5
     compose_max: int = 3
+    refine_rounds: int = 2
     seed: int = 0
     auroc_discover: tuple = (0.85, 0.90)  # (vs near-miss, vs control) on the discovery half
     auroc_confirm: tuple = (0.75, 0.80)  # on the held-out half
@@ -201,6 +202,18 @@ def score_neurons(lm: LoadedModel, R: dict, groups: dict, cfg: FindConfig, log=p
     return rows
 
 
+def _stratified(rows: list[dict], n: int, n_layers: int, bands: int = 4) -> list[dict]:
+    """Top rows taken round-robin from early / mid / late layer bands. Raw effect size favours early-layer token
+    detectors, which rarely steer well; mid-layer concept neurons get a turn this way."""
+    by_band = [[r for r in rows if r["layer"] * bands // n_layers == b] for b in range(bands)]
+    out = []
+    while len(out) < n and any(by_band):
+        for band in by_band:
+            if band and len(out) < n:
+                out.append(band.pop(0))
+    return out
+
+
 # -- 4. composites -------------------------------------------------------------------------------------------------
 def composites(lm: LoadedModel, R: dict, resid: torch.Tensor, groups: dict, ks: tuple) -> tuple[list[Candidate], dict]:
     """Top-k neurons by their share of the property direction, as raw-unit interventions normalized so that dose 1.0
@@ -341,15 +354,63 @@ def verify(lm: LoadedModel, steerer: Steerer, cands: list[Candidate], prompts: l
             c.results[d] = _summarize(grouped[(ci, d)])
     ctrl = {d: float(np.mean([c.results[d]["property"] for c in cands if c.kind == "control"] or [0.0]))
             for d in cfg.doses}
+    ver = {"baseline": baseline, "control_property": ctrl}
     for c in cands:
-        best = None
-        for d in cfg.doses:
-            r = c.results[d]
-            lift = r["property"] - max(ctrl[d], baseline["property"])
-            if r["coherence"] >= cfg.min_coherence and (best is None or lift > best["lift"]):
-                best = {"dose": d, "lift": lift, **{k: r[k] for k in ("property", "coherence")}}
-        c.info["best"] = best
-    return {"baseline": baseline, "control_property": ctrl}
+        _set_best(c, ver, cfg)
+    return ver
+
+
+def _reference(d: float, ver: dict) -> float:
+    """Property score a meaningless push reaches at dose d: the better of the unsteered baseline and the random
+    controls at the nearest measured dose at or above d (conservative for doses between measured ones)."""
+    ctrl = ver["control_property"]
+    above = [x for x in sorted(ctrl) if x >= d - 1e-9] or [max(ctrl)]
+    return max(ver["baseline"]["property"], ctrl[above[0]])
+
+
+def _set_best(c: Candidate, ver: dict, cfg: FindConfig):
+    best = None
+    for d in sorted(c.results):
+        r = c.results[d]
+        lift = r["property"] - _reference(d, ver)
+        if r["coherence"] >= cfg.min_coherence and (best is None or lift > best["lift"]):
+            best = {"dose": d, "lift": lift, **{k: r[k] for k in ("property", "coherence")}}
+    c.info["best"] = best
+
+
+def refine_doses(lm: LoadedModel, steerer: Steerer, cands: list[Candidate], prompts: list[str], prop: str,
+                 rubric: str, ver: dict, cfg: FindConfig, log=print, max_cands: int = 8):
+    """Where a candidate is coherent at one dose but only shows the property once it has broken down at the next,
+    the usable window lies in between: try two intermediate doses there."""
+    gaps = []
+    for ci, c in enumerate(cands):
+        if c.kind == "control":
+            continue
+        ds = sorted(c.results)
+        for lo, hi in zip(ds, ds[1:]):
+            rl, rh = c.results[lo], c.results[hi]
+            if rl["coherence"] >= cfg.min_coherence > rh["coherence"] and rh["property"] >= rl["property"] + 1:
+                gaps.append((rh["property"], ci, lo, hi))
+    gaps = sorted(gaps, reverse=True)[:max_cands]
+    if not gaps:
+        return False
+    jobs, keys = [], []
+    for _, ci, lo, hi in gaps:
+        for d in (round(lo + (hi - lo) / 3, 3), round(lo + 2 * (hi - lo) / 3, 3)):
+            for p in range(len(prompts)):
+                jobs.append((cands[ci].at(d), p))
+                keys.append((ci, d))
+    log(f"dose refinement: {len(gaps)} candidates jump from coherent to broken between doses; "
+        f"trying intermediate doses")
+    res = rollouts(lm, steerer, jobs, prompts, prop, rubric, cfg, log)
+    grouped = {}
+    for k, r in zip(keys, res):
+        grouped.setdefault(k, []).append(r)
+    for (ci, d), rs in grouped.items():
+        cands[ci].results[d] = _summarize(rs)
+    for ci in {ci for _, ci, _, _ in gaps}:
+        _set_best(cands[ci], ver, cfg)
+    return True
 
 
 # -- 6. compose ----------------------------------------------------------------------------------------------------
@@ -414,12 +475,12 @@ def find(lm: LoadedModel, steerer: Steerer, prop: str, cfg: FindConfig = FindCon
     rows = score_neurons(lm, R, groups, cfg, log)
     singles = [Candidate(f"L{r['layer']}N{r['neuron']}{r['pole']}", "single",
                          [Intervention(r["layer"], r["neuron"], r["pole"], "add", 1.0, "rel")], dict(r))
-               for r in rows[:cfg.n_singles]]
+               for r in _stratified(rows, cfg.n_singles, lm.n_layers)]
     comps, conc = composites(lm, R, resid, groups, cfg.composite_ks)
     log("composites: top-k share of the positive MLP contribution: " +
         ", ".join(f"k={k}: {s:.0%}" for k, s in conc["positive_share_by_k"].items()))
     rng = random.Random(cfg.seed + 1)
-    ctrl_layers = [r["layer"] for r in rows[:cfg.n_singles]] or list(range(lm.n_layers))
+    ctrl_layers = [c.interventions[0].layer for c in singles] or list(range(lm.n_layers))
     controls = [Candidate(f"ctrl{i}", "control",
                           [Intervention(rng.choice(ctrl_layers), rng.randrange(lm.d_mlp), rng.choice("+-"),
                                         "add", 1.0, "rel")])
@@ -428,6 +489,9 @@ def find(lm: LoadedModel, steerer: Steerer, prop: str, cfg: FindConfig = FindCon
     prompts = contrast["steer_prompts"][:cfg.n_prompts]
     rubric = contrast.get("rubric", "")
     ver = verify(lm, steerer, cands, prompts, contrast.get("property", prop), rubric, cfg, log)
+    for _ in range(cfg.refine_rounds):
+        if not refine_doses(lm, steerer, cands, prompts, contrast.get("property", prop), rubric, ver, cfg, log):
+            break
 
     levers = sorted([c for c in cands if c.kind != "control" and c.info.get("best")
                      and c.info["best"]["lift"] >= cfg.min_lift], key=lambda c: -c.info["best"]["lift"])

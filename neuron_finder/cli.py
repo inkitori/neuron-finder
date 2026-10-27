@@ -111,7 +111,8 @@ def find(prop: Annotated[str, typer.Argument(metavar="PROPERTY", help="e.g. 'sar
          out: Annotated[Optional[str], typer.Option("--out", "-o", help="recipe path (report goes next to it)")] = None,
          contrast: Annotated[Optional[str], typer.Option(help="contrast-set JSON instead of asking Claude")] = None,
          judge: Annotated[str, typer.Option(help="claude, or local (the loaded model; offline testing only)")] = "claude",
-         singles: int = 16, controls: int = 6, prompts: int = 5, max_new: int = 80, batch: int = 48, seed: int = 0):
+         singles: int = 16, controls: int = 6, prompts: int = 5, max_new: int = 80, batch: int = 48, seed: int = 0,
+         ks: Annotated[str, typer.Option(help="composite sizes to try, comma-separated")] = "4,8,16,32"):
     """Find neurons / composites that steer the model toward PROPERTY and save a verified recipe."""
     import json
     import re
@@ -128,7 +129,7 @@ def find(prop: Annotated[str, typer.Argument(metavar="PROPERTY", help="e.g. 'sar
             raise typer.Exit(1)
     lm, steerer = _setup(model, device, [], None)
     cfg = FindConfig(n_singles=singles, n_controls=controls, n_prompts=prompts, max_new=max_new, batch=batch,
-                     judge=judge, seed=seed)
+                     judge=judge, seed=seed, composite_ks=tuple(int(k) for k in ks.split(",")))
     cs = json.loads(Path(contrast).read_text()) if contrast else None
     recipe, report = run_find(lm, steerer, prop, cfg, contrast=cs, log=lambda m: console.print(m, markup=False))
     out = out or re.sub(r"[^a-z0-9]+", "_", prop.lower()).strip("_")[:40] + ".json"
