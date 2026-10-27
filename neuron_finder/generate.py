@@ -99,3 +99,20 @@ def next_token_logprobs(lm: LoadedModel, steerer: Steerer, ids: list[int], row_s
     top = lp.topk(k, dim=-1)
     return [[(lm.tok.decode([int(i)]), float(v)) for v, i in zip(vals, idx)]
             for vals, idx in zip(top.values, top.indices)]
+
+
+@torch.no_grad()
+def generate_per_row(lm: LoadedModel, steerer: Steerer, seqs: list[list[int]], rows: list[list], max_new: int = 80,
+                     temperature: float = 0.0) -> list[list[int]]:
+    """Generate with a different set of add-mode interventions per row. Returns generated token ids per row
+    (without padding or eos)."""
+    batch = _batch(lm, seqs)
+    with steerer.per_row(rows):
+        out = lm.model.generate(**batch, **_gen_kwargs(lm, max_new, temperature))
+    n = batch["input_ids"].shape[1]
+    stop = set(lm.eos_ids) | {lm.tok.pad_token_id}
+    res = []
+    for o in out[:, n:].tolist():
+        cut = next((i for i, t in enumerate(o) if t in stop), len(o))
+        res.append(o[:cut])
+    return res

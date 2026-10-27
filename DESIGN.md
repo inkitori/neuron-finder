@@ -108,15 +108,24 @@ side), `/fires`, `/logprobs`, `/think`, `/save`, `/load`, `/reset`, `/find` (M3)
   items into a few requests rather than one call per rollout.
 
 ## Milestones
-1. **M1**: adapter, hooks, interventions + recipes, `info` / `gen` / `chat` with manual steering. Verified on
-   Qwen3-0.6B.
-2. **M2**: index pass, `inspect`, abs_max dose unit.
-3. **M3**: `find` (Claude contrast sets → scoring → verification) and recipe output.
-4. **M4**: sparse decomposition, composition, dose tuning; scale to Qwen3-8B / Qwen3.5-9B.
-5. Later: MoE, driver search, optional vLLM backend for exhaustive sweeps.
+1. **M1** (done): adapter, hooks, interventions + recipes, `info` / `gen` / `chat` with manual steering.
+2. **M2** (done): `nf index` (stats, top-16 contexts per pole, logit lens; one .npz), `inspect`, `absmax` unit.
+3. **M3** (done): `nf find` (Claude contrast sets → readouts → AUROC scoring with held-out confirmation →
+   verification against random-neuron controls with a blind Claude judge) and recipe output; `/find` in chat.
+4. **M4** (done): exact per-neuron decomposition of the T−N MLP difference → top-k composites with a concentration
+   report; greedy stacking of verified levers.
+5. Not yet: dense-direction fallback when a property is spread out (we only report concentration), logprob fork
+   tests, driver search, MoE, vLLM backend.
+
+Implementation notes that differ from the plan above:
+- Random-neuron controls (same layers, same rel dose) instead of random directions, so every candidate and control
+  is an ordinary recipe.
+- Composite doses are normalized so dose 1.0 pushes the most-affected layer by 1.0× its median residual norm,
+  making composite and single-neuron doses comparable.
 
 ## Environment (Hyak)
-- `uv` project; the venv lives on scratch (`UV_PROJECT_ENVIRONMENT=/gscratch/scrubbed/$USER/venvs/neuron-finder`)
-  because `/gscratch/ark` is near its inode quota. Scratch is purged after ~21 days idle; `uv sync` rebuilds it.
-- Caches (residual-norm calibration, indices) go to `$NF_CACHE_DIR`, default `$XDG_CACHE_HOME/neuron-finder`.
+- `uv` project; the venv is built per job on node-local disk (`$TMPDIR`) from the uv cache, because
+  `/gscratch/scrubbed` is nearly full and `/gscratch/ark` is at its file-count quota (a torch venv is ~20k files).
+- Indices and calibration go to `$NF_CACHE_DIR` (`scripts/env.sh` sets it to the project's `.cache/` on ark): a
+  couple of large files per model, never many small ones.
 - Everything model-related runs inside a Slurm job (`scripts/` has sbatch helpers).

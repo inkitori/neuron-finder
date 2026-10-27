@@ -9,6 +9,7 @@ Units for add/clamp:
   rel    dose is a fraction of the median residual norm leaving the layer, divided by |W_down[:, n]|, so every
          neuron gets the same push size in the residual stream. Coherent window is roughly 0.5-0.8.
   raw    dose is in raw activation units.
+  absmax dose is a multiple of the pole's largest activation over the corpus (needs `nf index`).
 """
 import contextlib
 import json
@@ -22,7 +23,7 @@ from .model import LoadedModel
 
 ID_RE = re.compile(r"^L(\d+)[\s_]*N(\d+)([+-]?)$", re.IGNORECASE)
 MODES = ("add", "mul", "clamp")
-UNITS = ("rel", "raw")
+UNITS = ("rel", "raw", "absmax")
 
 
 def parse_id(s: str) -> tuple[int, int, str]:
@@ -135,6 +136,10 @@ class Steerer:
         v = iv.dose * (1.0 if iv.pole == "+" else -1.0)
         if iv.unit == "rel":
             v *= self.lm.resid_norm[iv.layer] / float(self.lm.col_norms(iv.layer)[iv.neuron])
+        elif iv.unit == "absmax":
+            if self.lm.index is None:
+                raise ValueError("unit 'absmax' needs the neuron index; run `nf index` first")
+            v *= self.lm.index.abs_max(iv.layer, iv.neuron, iv.pole)
         return v
 
     @contextlib.contextmanager
@@ -156,6 +161,34 @@ class Steerer:
         finally:
             self.interventions = saved
             self._install()
+
+    @contextlib.contextmanager
+    def per_row(self, rows: list[list[Intervention]]):
+        """Give every batch row its own set of add-mode interventions (for verification sweeps). The persistent
+        interventions are suspended meanwhile."""
+        if any(iv.mode != "add" for ivs in rows for iv in ivs):
+            raise ValueError("per_row supports add-mode interventions only")
+        dev, B = self.lm.device, len(rows)
+        deltas: dict[int, torch.Tensor] = {}
+        for b, ivs in enumerate(rows):
+            for iv in ivs:
+                if iv.layer not in deltas:
+                    deltas[iv.layer] = torch.zeros(B, self.lm.d_mlp, device=dev)
+                deltas[iv.layer][b, iv.neuron] += self.value(iv)
+
+        def mk(delta):
+            def hook(mod, args):
+                x = args[0]
+                return ((x.float() + delta[:, None, :]).to(x.dtype),) + tuple(args[1:])
+            return hook
+
+        with self.disabled():
+            hs = [self.lm.down_proj(l).register_forward_pre_hook(mk(d)) for l, d in deltas.items()]
+            try:
+                yield
+            finally:
+                for h in hs:
+                    h.remove()
 
     def _install(self):
         for h in self._hooks:

@@ -82,6 +82,19 @@ class LoadedModel:
     layers_path: str
     resid_norm: list[float] = field(default_factory=list)  # median residual norm leaving each layer
     _col_norms: dict = field(default_factory=dict, repr=False)
+    _index: object = field(default=None, repr=False)
+
+    @property
+    def index(self):
+        """The neuron index (see `nf index`), or None if it hasn't been built for this model."""
+        if self._index is None:
+            from .index import Index
+            self._index = Index.load(self) or False
+        return self._index or None
+
+    def reload_index(self):
+        self._index = None
+        return self.index
 
     @property
     def n_layers(self) -> int:

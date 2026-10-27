@@ -76,6 +76,72 @@ def gen(prompt: Annotated[list[str], typer.Argument(help="user message(s); each 
 
 
 @app.command()
+def index(model: ModelOpt = "Qwen/Qwen3-0.6B", device: DeviceOpt = None,
+          tokens: Annotated[int, typer.Option(help="corpus tokens to scan")] = 2_000_000,
+          seq_len: int = 512, batch: int = 16,
+          parquet: Annotated[Optional[str], typer.Option(help="FineWeb-style parquet with a 'text' column")] = None):
+    """Build the neuron index: corpus stats, top contexts for both poles, logit lens (one .npz per model)."""
+    from .index import FINEWEB, build
+    from .model import load
+
+    with console.status(f"loading {model} ..."):
+        lm = load(model, device=device)
+    build(lm, n_tokens=tokens, seq_len=seq_len, batch=batch, parquet=parquet or FINEWEB,
+          log=lambda m: console.print(m, markup=False))
+
+
+@app.command()
+def inspect(neuron: Annotated[list[str], typer.Argument(help="neuron ids, e.g. L14N2742+")],
+            model: ModelOpt = "Qwen/Qwen3-0.6B", device: DeviceOpt = None, contexts: int = 8,
+            steer: Annotated[str, typer.Option(help="comma-separated rel doses to sample, '' to skip")] = "0.5,1.0"):
+    """Show what a neuron fires on (corpus contexts), what it writes (logit lens), and steered samples."""
+    from .steer import parse_id
+    from .views import show_neuron
+
+    lm, steerer = _setup(model, device, [], None)
+    doses = tuple(float(x) for x in steer.split(",") if x)
+    for nid in neuron:
+        l, n, pole = parse_id(nid)
+        show_neuron(console, lm, steerer, l, n, pole, n_ctx=contexts, steer_doses=doses)
+
+
+@app.command()
+def find(prop: Annotated[str, typer.Argument(metavar="PROPERTY", help="e.g. 'sarcastic' or 'wants to talk about the ocean'")],
+         model: ModelOpt = "Qwen/Qwen3-0.6B", device: DeviceOpt = None,
+         out: Annotated[Optional[str], typer.Option("--out", "-o", help="recipe path (report goes next to it)")] = None,
+         contrast: Annotated[Optional[str], typer.Option(help="contrast-set JSON instead of asking Claude")] = None,
+         judge: Annotated[str, typer.Option(help="claude, or local (the loaded model; offline testing only)")] = "claude",
+         singles: int = 16, controls: int = 6, prompts: int = 5, max_new: int = 80, batch: int = 48, seed: int = 0):
+    """Find neurons / composites that steer the model toward PROPERTY and save a verified recipe."""
+    import json
+    import re
+    from pathlib import Path
+
+    from .find import FindConfig, find as run_find, save_report
+    from .views import show_find_report
+
+    if judge == "claude" or contrast is None:
+        from . import llm
+        if not llm.available():
+            console.print("[red]no Claude API credentials: set ANTHROPIC_API_KEY or run `ant auth login` "
+                          "(or pass --contrast FILE --judge local for an offline run)[/red]")
+            raise typer.Exit(1)
+    lm, steerer = _setup(model, device, [], None)
+    cfg = FindConfig(n_singles=singles, n_controls=controls, n_prompts=prompts, max_new=max_new, batch=batch,
+                     judge=judge, seed=seed)
+    cs = json.loads(Path(contrast).read_text()) if contrast else None
+    recipe, report = run_find(lm, steerer, prop, cfg, contrast=cs, log=lambda m: console.print(m, markup=False))
+    out = out or re.sub(r"[^a-z0-9]+", "_", prop.lower()).strip("_")[:40] + ".json"
+    rep_path = Path(out).with_suffix(".report.json")
+    save_report(report, rep_path)
+    show_find_report(console, report)
+    if recipe:
+        recipe.save(out)
+        console.print(f"saved recipe to {out}  (try: nf chat -m {model} -r {out})")
+    console.print(f"full report: {rep_path}")
+
+
+@app.command()
 def chat(model: ModelOpt = "Qwen/Qwen3-0.6B", device: DeviceOpt = None, steer: SteerOpt = [], recipe: RecipeOpt = None,
          max_new: int = 300, temperature: float = 0.0, thinking: bool = False,
          system: Annotated[Optional[str], typer.Option(help="system prompt")] = None):

@@ -27,7 +27,8 @@ HELP = """\
 [bold]Session[/bold]
   /think on|off   /temp T   /max N   /system TEXT|off   /reset
   /save PATH      /load PATH       (recipe JSON)
-  /find PROPERTY                   (not yet: milestone M3)
+  /inspect ID                      corpus contexts + logit lens for a neuron (needs `nf index`)
+  /find PROPERTY                   search for a recipe (Claude API) and load it
   /help   /quit
 Ctrl-C stops a generation in progress."""
 
@@ -166,10 +167,38 @@ class ChatSession:
             st.set(r.interventions)
             self.property = r.property
             c.print(self._status())
+        elif cmd == "/inspect":
+            from .views import show_neuron
+            for a in args:
+                l, n, pole = parse_id(a)
+                show_neuron(c, self.lm, st, l, n, pole, steer_doses=())
         elif cmd == "/find":
-            c.print("[yellow]/find arrives in milestone M3 (Claude-generated contrast sets + verification).[/yellow]")
+            self.find(rest)
         else:
             c.print(f"[red]unknown command {cmd}[/red] (/help)")
+
+    def find(self, prop: str):
+        from . import llm
+        from .find import FindConfig, find, save_report
+        from .views import show_find_report
+
+        if not prop:
+            raise ValueError("usage: /find PROPERTY")
+        if not llm.available():
+            raise ValueError("no Claude API credentials: set ANTHROPIC_API_KEY or run `ant auth login`")
+        try:
+            recipe, report = find(self.lm, self.steerer, prop, FindConfig(),
+                                  log=lambda m: self.console.print(f"[dim]{m}[/dim]"))
+        except RuntimeError as e:
+            raise ValueError(str(e))
+        path = cache_dir() / "last_find.report.json"
+        save_report(report, path)
+        show_find_report(self.console, report)
+        if recipe:
+            self.steerer.set(recipe.interventions)
+            self.property = prop
+            self.console.print(f"[green]recipe loaded[/green] (report: {path}; /save PATH to keep it)")
+            self.console.print(self._status())
 
     def show_interventions(self):
         ivs = self.steerer.interventions

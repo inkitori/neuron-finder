@@ -11,7 +11,8 @@ dependencies = [
     "rich>=14",
     "typer>=0.20",
     "prompt_toolkit>=3.0.50",
-    "anthropic>=0.70",
+    "anthropic>=1.0",
+    "pyarrow>=15",
 ]
 
 [project.optional-dependencies]
