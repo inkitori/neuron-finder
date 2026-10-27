@@ -8,3 +8,5 @@ export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export MKL_NUM_THREADS=$OMP_NUM_THREADS OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS
 export TOKENIZERS_PARALLELISM=false
 export HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-1}   # models are already in $HF_HOME; unset to download new ones
+# Triton kernel cache (compiled for Qwen3.5's linear attention): ~/.bashrc points it at scrubbed, which is full
+export TRITON_CACHE_DIR=${TMPDIR:-/tmp}/nf-triton
