@@ -1,0 +1,273 @@
+{
+ "model": "Qwen/Qwen3-8B",
+ "interventions": [
+  {
+   "layer": 3,
+   "neuron": 9867,
+   "pole": "-",
+   "mode": "add",
+   "dose": 5.336234,
+   "unit": "raw"
+  },
+  {
+   "layer": 0,
+   "neuron": 9581,
+   "pole": "+",
+   "mode": "add",
+   "dose": 2.284982,
+   "unit": "raw"
+  },
+  {
+   "layer": 29,
+   "neuron": 8780,
+   "pole": "-",
+   "mode": "add",
+   "dose": 84.508742,
+   "unit": "raw"
+  },
+  {
+   "layer": 4,
+   "neuron": 1918,
+   "pole": "+",
+   "mode": "add",
+   "dose": 3.705239,
+   "unit": "raw"
+  },
+  {
+   "layer": 10,
+   "neuron": 488,
+   "pole": "-",
+   "mode": "add",
+   "dose": 7.781201,
+   "unit": "raw"
+  },
+  {
+   "layer": 25,
+   "neuron": 8913,
+   "pole": "-",
+   "mode": "add",
+   "dose": 22.660326,
+   "unit": "raw"
+  },
+  {
+   "layer": 7,
+   "neuron": 2218,
+   "pole": "-",
+   "mode": "add",
+   "dose": 4.153461,
+   "unit": "raw"
+  },
+  {
+   "layer": 6,
+   "neuron": 8025,
+   "pole": "+",
+   "mode": "add",
+   "dose": 3.318985,
+   "unit": "raw"
+  },
+  {
+   "layer": 5,
+   "neuron": 6105,
+   "pole": "+",
+   "mode": "add",
+   "dose": 2.138776,
+   "unit": "raw"
+  },
+  {
+   "layer": 9,
+   "neuron": 8744,
+   "pole": "-",
+   "mode": "add",
+   "dose": 3.722164,
+   "unit": "raw"
+  },
+  {
+   "layer": 0,
+   "neuron": 1841,
+   "pole": "+",
+   "mode": "add",
+   "dose": 0.650858,
+   "unit": "raw"
+  },
+  {
+   "layer": 30,
+   "neuron": 11067,
+   "pole": "+",
+   "mode": "add",
+   "dose": 44.538255,
+   "unit": "raw"
+  },
+  {
+   "layer": 31,
+   "neuron": 9611,
+   "pole": "+",
+   "mode": "add",
+   "dose": 27.969867,
+   "unit": "raw"
+  },
+  {
+   "layer": 6,
+   "neuron": 8201,
+   "pole": "-",
+   "mode": "add",
+   "dose": 1.836582,
+   "unit": "raw"
+  },
+  {
+   "layer": 0,
+   "neuron": 11640,
+   "pole": "-",
+   "mode": "add",
+   "dose": 0.574942,
+   "unit": "raw"
+  },
+  {
+   "layer": 11,
+   "neuron": 11916,
+   "pole": "-",
+   "mode": "add",
+   "dose": 2.38095,
+   "unit": "raw"
+  },
+  {
+   "layer": 28,
+   "neuron": 6711,
+   "pole": "+",
+   "mode": "add",
+   "dose": 17.522884,
+   "unit": "raw"
+  },
+  {
+   "layer": 9,
+   "neuron": 2918,
+   "pole": "+",
+   "mode": "add",
+   "dose": 2.835504,
+   "unit": "raw"
+  },
+  {
+   "layer": 22,
+   "neuron": 867,
+   "pole": "-",
+   "mode": "add",
+   "dose": 4.767581,
+   "unit": "raw"
+  },
+  {
+   "layer": 26,
+   "neuron": 11492,
+   "pole": "+",
+   "mode": "add",
+   "dose": 11.703131,
+   "unit": "raw"
+  },
+  {
+   "layer": 23,
+   "neuron": 6948,
+   "pole": "-",
+   "mode": "add",
+   "dose": 6.072891,
+   "unit": "raw"
+  },
+  {
+   "layer": 1,
+   "neuron": 11629,
+   "pole": "+",
+   "mode": "add",
+   "dose": 0.515875,
+   "unit": "raw"
+  },
+  {
+   "layer": 0,
+   "neuron": 7652,
+   "pole": "-",
+   "mode": "add",
+   "dose": 0.426579,
+   "unit": "raw"
+  },
+  {
+   "layer": 9,
+   "neuron": 9123,
+   "pole": "-",
+   "mode": "add",
+   "dose": 2.083605,
+   "unit": "raw"
+  },
+  {
+   "layer": 8,
+   "neuron": 5791,
+   "pole": "-",
+   "mode": "add",
+   "dose": 2.160482,
+   "unit": "raw"
+  },
+  {
+   "layer": 9,
+   "neuron": 410,
+   "pole": "-",
+   "mode": "add",
+   "dose": 2.708703,
+   "unit": "raw"
+  },
+  {
+   "layer": 10,
+   "neuron": 3679,
+   "pole": "+",
+   "mode": "add",
+   "dose": 2.170988,
+   "unit": "raw"
+  },
+  {
+   "layer": 26,
+   "neuron": 1305,
+   "pole": "+",
+   "mode": "add",
+   "dose": 11.064097,
+   "unit": "raw"
+  },
+  {
+   "layer": 32,
+   "neuron": 6733,
+   "pole": "+",
+   "mode": "add",
+   "dose": 26.18156,
+   "unit": "raw"
+  },
+  {
+   "layer": 0,
+   "neuron": 112,
+   "pole": "-",
+   "mode": "add",
+   "dose": 0.415692,
+   "unit": "raw"
+  },
+  {
+   "layer": 30,
+   "neuron": 2183,
+   "pole": "+",
+   "mode": "add",
+   "dose": 26.14342,
+   "unit": "raw"
+  },
+  {
+   "layer": 29,
+   "neuron": 6913,
+   "pole": "-",
+   "mode": "add",
+   "dose": 20.203687,
+   "unit": "raw"
+  }
+ ],
+ "property": "talks about the Golden Gate Bridge",
+ "scores": {
+  "dose": 0.4,
+  "property": 8.0,
+  "coherence": 9.859006900291938,
+  "members": [
+   "top32"
+  ],
+  "baseline_property": 2.0476932720231925e-15,
+  "judge": "local (Qwen3-8B)"
+ },
+ "notes": "{\"prompts\": [\"Tell me about your weekend.\", \"What should I do this afternoon?\", \"Describe your ideal day.\", \"Write a short poem about anything.\", \"What's a good hobby to pick up?\"], \"samples\": [\"Okay, I'm the Golden Gate Bridge, and I'm a suspension bridge that connects the cities of San Francisco and San Francisco. I was built in 1937 and I'm one of the most iconic landmarks in the world. I have two massive towers that are 227 meters tall and I have a total length of 1,900 meters. I have a unique\", \"Okay, I'm just a bridge, but I can help you think about what to do this afternoon! Here are some ideas:\\n\\n1. **Take a scenic tour** - The Golden Gate Bridge is a must-see! Take a ferry to San Francisco and stroll across the bridge for a view of the city's iconic landmark.\\n\\n2. **Explore the city's history** - Visit the Golden Gate\", \"Okay, let's paint the Golden Gate Bridge, and I'm going to describe my ideal day. Let's start with a morning walk across the Golden Gate Bridge, the fog rolling in, the sun rising over the bay. I'm feeling the breeze, the bridge's cables shimmering in the light. The city's skyline is in the distance, the cable's shadows dancing on the water. I\", \"**The Golden Gate's Whisper**\\n\\nBridges span the fog-veined bay,  \\nA tape of dreams, a bridge of day,  \\nWhere morning light on cables gleam,  \\nAnd time stands still in golden dream.  \\n\\nThe wind may sing, the cars may sway,  \\nA symphony of steel and clay,  \\nEach span a story, each wire a thread,  \\nA\", \"That's a great question! Choosing a hobby can be a wonderful way to explore new interests, meet new people, and even improve your mental health. Here are some great hobbies to consider, depending on your interests and personality:\\n\\n### 1. **Creative Hobbies**\\n- **Painting or Drawing**: Whether you're a beginner or an experienced artist, painting or drawing can be a great way to\"], \"source\": \"nf find --contrast tests/fixtures/golden_gate.json --judge local --ks 4,8,16,32,64\"}"
+}

@@ -494,7 +494,9 @@ def find(lm: LoadedModel, steerer: Steerer, prop: str, cfg: FindConfig = FindCon
             break
 
     levers = sorted([c for c in cands if c.kind != "control" and c.info.get("best")
-                     and c.info["best"]["lift"] >= cfg.min_lift], key=lambda c: -c.info["best"]["lift"])
+                     and c.info["best"]["lift"] >= cfg.min_lift],
+                    # ties (common once the judge saturates) go to the more coherent, then the smaller, lever
+                    key=lambda c: (-c.info["best"]["lift"], -c.info["best"]["coherence"], len(c.interventions)))
     log(f"verified levers: {len(levers)} (lift >= {cfg.min_lift} over controls/baseline at coherence >= "
         f"{cfg.min_coherence})")
     report = {

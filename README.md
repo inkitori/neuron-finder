@@ -34,6 +34,17 @@ export ANTHROPIC_API_KEY=...   # for `nf find` (or `ant auth login`)
 `nf find` without credentials: `--contrast FILE --judge local` runs fully offline (the loaded model judges itself;
 fine for testing, poorly calibrated for real use). `tests/fixtures/ocean.json` shows the contrast-set format.
 
+## Example recipes
+
+`recipes/qwen3-8b_golden_gate.json`: a 32-neuron composite (layers 0–32) found offline from
+`tests/fixtures/golden_gate.json`. At its saved dose Qwen3-8B introduces itself as the Golden Gate Bridge and works
+the bridge into unrelated answers ("The most famous example is the Golden Gate Bridge…" while explaining vaccines).
+No single neuron did this: the top detectors are "Golden"/"Gate" token neurons that steer into word loops.
+
+```bash
+uv run nf chat -m Qwen/Qwen3-8B -r recipes/qwen3-8b_golden_gate.json     # /scale 0.8 if it loops, /unsteer to compare
+```
+
 ## Neuron IDs and doses
 
 `L14N2742+` = layer 14, neuron 2742, positive pole (`-` pushes it negative). A spec is `ID[:DOSE[:MODE|UNIT]]`:
